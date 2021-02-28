@@ -10,7 +10,9 @@
         "target": "es5",
         "allowJs": true,
         "jsx": "react",
-        "lib": ["ES2015", "DOM"]
+        "lib": ["ES2015", "DOM"],
+
+        "allowSyntheticDefaultImports": true
     },
     "include": [
         "./src/**/*"
