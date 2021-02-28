@@ -13,7 +13,7 @@ const Recorder = () => {
   const [stream, setStream] = useState<MediaStream>();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
-  const start = async () => {
+  const init = async () => {
 
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: true, video: false
@@ -26,16 +26,32 @@ const Recorder = () => {
     setDevices(devices);
   }
 
+  const choose = async (info: MediaDeviceInfo) => {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: info.deviceId },
+      video: false
+    })
+
+    setStream(prev => {
+      prev?.getTracks().forEach(track => track.stop())
+
+      return stream;
+    });
+
+  }
+
 
   return <>
 
-    {!stream && <button onClick={start}>start</button>}
+
+    {!stream && <button onClick={init}>init</button>}
+    {stream && <>
+      <h1>{stream.getAudioTracks()[0]?.label}</h1>
+    </>}
 
     {devices.map(dev => <div key={dev.deviceId}>
-      <h2>{dev.kind}</h2>
-      <h3>{dev.label}</h3>
-      <h4>{dev.deviceId}</h4>
-
+      <h3> <button onClick={() => choose(dev)}>Use</button> {dev.label}</h3>
     </div>)}
 
   </>
