@@ -1,0 +1,19 @@
+{
+  "name": "bencastr",
+  "version": "1.0.0",
+  "description": "The remote hack studio",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/remotehack/bencastr.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/remotehack/bencastr/issues"
+  },
+  "homepage": "https://github.com/remotehack/bencastr#readme"
+}
