@@ -1,0 +1,24 @@
+/* body {
+  background: #222;
+  color: #eee;
+
+  font-family: sans-serif;
+}
+ */
+
+:root {
+  --bg-color: rgb(30, 30, 30);
+  --bg-secondary-color: #2c2c2c;
+  --color-primary: #14854F;
+  --color-lightGrey: #d2d6dd;
+  --color-grey: #242427;
+  --color-darkGrey: #3f4144;
+  --color-error: #d43939;
+  --color-success: #28bd14;
+  --grid-maxWidth: 120rem;
+  --grid-gutter: 2rem;
+  --font-size: 1.6rem;
+  --font-color: #e3e3e3;
+  --font-family-sans: sans-serif;
+  --font-family-mono: monaco, "Consolas", "Lucida Console", monospace;
+}
