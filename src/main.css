@@ -1,10 +1,5 @@
-/* body {
-  background: #222;
-  color: #eee;
 
-  font-family: sans-serif;
-}
- */
+@import url(chota);
 
 :root {
   --bg-color: rgb(30, 30, 30);
