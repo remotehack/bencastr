@@ -1,12 +1,12 @@
-import React, { FC, useEffect, useRef, useState } from 'react'
+import React, { FC, MouseEventHandler, useEffect, useRef, useState } from 'react'
 
 
 export const App = () => {
-  return <>
+  return <div className="container">
     <h1>Bencaster</h1>
 
     <Recorder />
-  </>;
+  </div>;
 }
 
 const Recorder = () => {
@@ -17,7 +17,7 @@ const Recorder = () => {
   const init = async () => {
 
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true, video: false
+      audio: true
     })
 
     const devices = (await navigator.mediaDevices.enumerateDevices())
@@ -57,6 +57,8 @@ const Recorder = () => {
     </div>)}
 
     <Audio stream={stream} audioCtx={audioCtx} />
+
+    <RecordStream stream={stream} />
 
   </>
 }
@@ -120,14 +122,65 @@ const Audio: FC<{ stream?: MediaStream, audioCtx?: AudioContext }> = ({ stream, 
       }
 
     }
-
-
-
-
   }, [stream])
 
 
   return <div>
+
     <canvas width="500" height="100" ref={canvas}></canvas>
   </div>
+}
+
+const RecordStream: FC<{ stream?: MediaStream }> = ({ stream }) => {
+
+  const [recorder, setRecorder] = useState<MediaRecorder>()
+  const [data, setData] = useState<BlobEvent[]>([])
+
+  useEffect(() => {
+
+    if (stream) {
+      const rec = new MediaRecorder(stream)
+      setRecorder(rec)
+
+      rec.addEventListener("dataavailable", (e) => {
+        console.log("REC", e.data)
+        setData(prev => prev.concat(e))
+      })
+    }
+
+  }, [stream])
+
+  const start = () => {
+    recorder?.start()
+  }
+
+  const stop = () => {
+    recorder?.stop()
+  }
+
+  const prep: MouseEventHandler<HTMLAnchorElement> = (event) => {
+
+
+
+    const blob = new Blob(data.map(e => e.data), { type: "audio/webm;codecs=opus" })
+
+    const url = URL.createObjectURL(blob);
+    event.currentTarget.href = url;
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 0)
+
+  }
+
+  if (!stream) return null
+
+  return <>
+    <button onClick={start}>Start</button>
+    <button onClick={stop}>Stop</button>
+    {data.length}
+
+    <a href="" onClick={prep} download={true}>Download</a>
+  </>;
+
 }
