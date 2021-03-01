@@ -1,15 +1,15 @@
-import React, { FC, MouseEventHandler, useEffect, useRef, useState } from 'react'
+import React, { FC, MouseEventHandler, useEffect, useMemo, useRef, useState } from 'react'
 
 
 export const App = () => {
   return <div className="container">
     <h1>Bencaster</h1>
 
-    <Recorder />
+    <SelectInput />
   </div>;
 }
 
-const Recorder = () => {
+const SelectInput = () => {
   const [stream, setStream] = useState<MediaStream>();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [audioCtx, setAudioCtx] = useState<AudioContext>();
@@ -85,16 +85,26 @@ const Audio: FC<{ stream?: MediaStream, audioCtx?: AudioContext }> = ({ stream, 
       const loop = () => {
         raf = requestAnimationFrame(loop);
         analyser.getByteTimeDomainData(dataArray);
-        ctx.fillStyle = "rgb(200, 200, 200)";
+
+
+        ctx.fillStyle = getComputedStyle(document.documentElement)
+          .getPropertyValue('--bg-color') || '#ccc';
+
+
         ctx.fillRect(0, 0, canvas.current!.width, canvas.current!.height);
 
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "rgb(0, 0, 0)";
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-primary') || '#333';
+
+
 
         ctx.beginPath();
 
         var sliceWidth = canvas.current!.width * 1.0 / bufferLength;
         var x = 0;
+
+
 
         for (var i = 0; i < bufferLength; i++) {
 
@@ -110,8 +120,9 @@ const Audio: FC<{ stream?: MediaStream, audioCtx?: AudioContext }> = ({ stream, 
           x += sliceWidth;
         }
 
+
         ctx.lineTo(canvas.current!.width, canvas.current!.height / 2);
-        ctx.stroke();
+        ctx.stroke()
       }
 
       loop();
@@ -122,17 +133,42 @@ const Audio: FC<{ stream?: MediaStream, audioCtx?: AudioContext }> = ({ stream, 
       }
 
     }
-  }, [stream])
+  }, [stream, audioCtx])
 
+  const props = useMemo(() => {
+
+    const size = {
+      width: 900,
+      height: 300
+    }
+
+    const style = {
+      width: size.width / (window.devicePixelRatio || 1),
+      height: size.height / (window.devicePixelRatio || 1)
+    }
+
+    return {
+      ...size,
+      style
+    }
+
+  }, [window.devicePixelRatio])
 
   return <div>
 
-    <canvas width="500" height="100" ref={canvas}></canvas>
+    <canvas {...props} ref={canvas}></canvas>
   </div>
+}
+
+enum RecordState {
+  NONE,
+  RECORDING,
+  FINISHED
 }
 
 const RecordStream: FC<{ stream?: MediaStream }> = ({ stream }) => {
 
+  const [state, setState] = useState<RecordState>(RecordState.NONE)
   const [recorder, setRecorder] = useState<MediaRecorder>()
   const [data, setData] = useState<BlobEvent[]>([])
 
@@ -151,17 +187,17 @@ const RecordStream: FC<{ stream?: MediaStream }> = ({ stream }) => {
   }, [stream])
 
   const start = () => {
-    recorder?.start()
+    recorder?.start() // chunk if streaming
+    setState(RecordState.RECORDING)
   }
 
   const stop = () => {
     recorder?.stop()
+    setState(RecordState.FINISHED)
   }
 
-  const prep: MouseEventHandler<HTMLAnchorElement> = (event) => {
-
-
-
+  const makeLink: MouseEventHandler<HTMLAnchorElement> = (event) => {
+    // todo, pick mime type from blobs
     const blob = new Blob(data.map(e => e.data), { type: "audio/webm;codecs=opus" })
 
     const url = URL.createObjectURL(blob);
@@ -176,11 +212,15 @@ const RecordStream: FC<{ stream?: MediaStream }> = ({ stream }) => {
   if (!stream) return null
 
   return <>
-    <button onClick={start}>Start</button>
-    <button onClick={stop}>Stop</button>
-    {data.length}
+    {state
+      === RecordState.NONE ? <button onClick={start}>Start</button> :
 
-    <a href="" onClick={prep} download={true}>Download</a>
+      state
+        === RecordState.RECORDING ? <button onClick={stop}>Stop</button> :
+
+        <a href="" onClick={makeLink} download={true} className="button primary">Download</a>
+    }
+
   </>;
 
 }
