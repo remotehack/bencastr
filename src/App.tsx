@@ -1,139 +1,203 @@
-import React, { FC, MouseEventHandler, useEffect, useMemo, useRef, useState } from 'react'
+import React,
+{ ChangeEventHandler, FC, MouseEventHandler, useContext, useEffect, useMemo, useRef, useState }
+  from 'react'
 
 
 export const App = () => {
   return <div className="container">
     <h1>Bencaster</h1>
 
-    <SelectInput />
+    <Provider>
+      <Microphone />
+
+      <Waveform />
+      <RecordStream />
+      {/*  <Recordings /> */}
+    </Provider>
+
   </div>;
 }
 
-const SelectInput = () => {
-  const [stream, setStream] = useState<MediaStream>();
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [audioCtx, setAudioCtx] = useState<AudioContext>();
 
+interface ICtx {
+  audio: AudioContext,
+  stream: MediaStream,
+  devices: MediaDeviceInfo[],
+  target: AudioNode,
+  setDevice: (device: string) => void;
+}
+
+const Context = React.createContext<null | ICtx>(null)
+
+
+// connects microphone & audio
+const Provider: FC = ({ children }) => {
+  const [ctx, setCtx] = useState<ICtx>();
+
+  let started = false
   const init = async () => {
+    if (started) return;
+    started = true;
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true
-    })
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
     const devices = (await navigator.mediaDevices.enumerateDevices())
-      .filter(device => device.kind === 'audioinput')
+      .filter(({ kind }) => kind === 'audioinput')
 
-    setStream(stream);
-    setDevices(devices);
-    setAudioCtx(new AudioContext());
-  }
+    // todo: safari
+    const audio = new AudioContext()
 
-  const choose = async (info: MediaDeviceInfo) => {
+    const target = audio.createGain();
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { deviceId: info.deviceId },
-      video: false
+    const source = audio.createMediaStreamSource(stream);
+    source.connect(target)
+
+
+    const setDevice = async (device: string) => {
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: device } } })
+
+      const source = audio.createMediaStreamSource(stream);
+      source.connect(target)
+
+      setCtx((prev) => {
+
+        prev!.stream.getTracks().forEach(track => track.stop())
+
+        return ({
+          ...prev!,
+          stream
+        })
+      })
+    }
+
+
+    setCtx({
+      audio,
+      stream,
+      devices,
+      target,
+      setDevice
     })
-
-    setStream(prev => {
-      prev?.getTracks().forEach(track => track.stop())
-
-      return stream;
-    });
-
   }
 
+
+  useEffect(() => {
+
+    if (!ctx) {
+      document.body.addEventListener('mouseenter', init)
+      window.addEventListener('click', init)
+
+      return () => {
+        document.body.removeEventListener('mouseenter', init)
+        window.removeEventListener('click', init)
+      }
+
+    }
+
+    return;
+
+  }, [ctx])
+
+
+  return ctx ?
+    <Context.Provider value={ctx}>{children}</Context.Provider> :
+    <p><button onClick={init}>start</button></p>
+}
+
+const Microphone = () => {
+
+  const ctx = useContext(Context);
+  if (!ctx) return null;
+
+  const labels = ctx.stream.getAudioTracks().map(c => c.label)
+  const device = ctx.devices.find(dev => dev.label === labels[0])
+
+  const change = (e: any) => ctx.setDevice(e.target.value)
 
   return <>
-
-
-    {!stream && <button onClick={init}>init</button>}
-    {stream && <>
-      <h1>{stream.getAudioTracks()[0]?.label}</h1>
-    </>}
-
-    {devices.map(dev => <div key={dev.deviceId}>
-      <h3> <button onClick={() => choose(dev)}>Use</button> {dev.label}</h3>
-    </div>)}
-
-    <Audio stream={stream} audioCtx={audioCtx} />
-
-    <RecordStream stream={stream} />
-
+    <select onChange={change} value={device && device.deviceId}>
+      {ctx.devices.map(device =>
+        <option key={device.deviceId} value={device.deviceId}>
+          {device.label}
+        </option>
+      )}
+    </select>
   </>
 }
 
 
-const Audio: FC<{ stream?: MediaStream, audioCtx?: AudioContext }> = ({ stream, audioCtx }) => {
+const Waveform: FC = () => {
+
+  const actx = useContext(Context);
+  if (!actx) return null;
+
   const canvas = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    if (stream && audioCtx) {
 
-      const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
+    const analyser = actx.audio.createAnalyser();
 
-      source.connect(analyser)
+    actx.target.connect(analyser)
 
-      analyser.fftSize = 2048;
-      var bufferLength = analyser.frequencyBinCount;
-      var dataArray = new Uint8Array(bufferLength);
+    analyser.fftSize = 2048;
+    var bufferLength = analyser.frequencyBinCount;
+    var dataArray = new Uint8Array(bufferLength);
 
-      let raf: number;
-      const ctx = canvas.current!.getContext('2d')!
+    let raf: number;
+    const ctx = canvas.current!.getContext('2d')!
 
-      const loop = () => {
-        raf = requestAnimationFrame(loop);
-        analyser.getByteTimeDomainData(dataArray);
+    const loop = () => {
+      raf = requestAnimationFrame(loop);
+      analyser.getByteTimeDomainData(dataArray);
 
 
-        ctx.fillStyle = getComputedStyle(document.documentElement)
-          .getPropertyValue('--bg-color') || '#ccc';
+      ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--bg-color') || '#ccc';
 
 
-        ctx.fillRect(0, 0, canvas.current!.width, canvas.current!.height);
+      ctx.fillRect(0, 0, canvas.current!.width, canvas.current!.height);
 
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-primary') || '#333';
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-primary') || '#333';
 
 
 
-        ctx.beginPath();
+      ctx.beginPath();
 
-        var sliceWidth = canvas.current!.width * 1.0 / bufferLength;
-        var x = 0;
+      var sliceWidth = canvas.current!.width * 1.0 / bufferLength;
+      var x = 0;
 
 
 
-        for (var i = 0; i < bufferLength; i++) {
+      for (var i = 0; i < bufferLength; i++) {
 
-          var v = dataArray[i] / 128.0;
-          var y = v * canvas.current!.height / 2;
+        var v = dataArray[i] / 128.0;
+        var y = v * canvas.current!.height / 2;
 
-          if (i === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
-          }
-
-          x += sliceWidth;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
         }
 
-
-        ctx.lineTo(canvas.current!.width, canvas.current!.height / 2);
-        ctx.stroke()
+        x += sliceWidth;
       }
 
-      loop();
 
-      return () => {
-        source.disconnect(analyser)
-        cancelAnimationFrame(raf);
-      }
-
+      ctx.lineTo(canvas.current!.width, canvas.current!.height / 2);
+      ctx.stroke()
     }
-  }, [stream, audioCtx])
+
+    loop();
+
+    return () => {
+      actx.target.disconnect(analyser)
+      cancelAnimationFrame(raf);
+    }
+
+  }, [])
 
   const props = useMemo(() => {
 
@@ -166,7 +230,10 @@ enum RecordState {
   FINISHED
 }
 
-const RecordStream: FC<{ stream?: MediaStream }> = ({ stream }) => {
+const RecordStream: FC = () => {
+
+  const actx = useContext(Context);
+  if (!actx) return null;
 
   const [state, setState] = useState<RecordState>(RecordState.NONE)
   const [recorder, setRecorder] = useState<MediaRecorder>()
@@ -174,30 +241,36 @@ const RecordStream: FC<{ stream?: MediaStream }> = ({ stream }) => {
 
   useEffect(() => {
 
-    if (stream) {
-      const rec = new MediaRecorder(stream)
-      setRecorder(rec)
+    const sout = actx.audio.createMediaStreamDestination();
+    actx.target.connect(sout);
 
-      rec.addEventListener("dataavailable", (e) => {
-        console.log("REC", e.data)
-        setData(prev => prev.concat(e))
-      })
+    const rec = new MediaRecorder(sout.stream)
+    setRecorder(rec)
+
+    rec.addEventListener("dataavailable", (e) => {
+      console.log("REC", e.data)
+      setData(prev => prev.concat(e))
+    })
+
+    return () => {
+      actx.target.disconnect(sout);
     }
 
-  }, [stream])
+  }, [])
 
   const start = () => {
-    recorder?.start() // chunk if streaming
+    recorder!.start() // chunk if streaming
     setState(RecordState.RECORDING)
   }
 
   const stop = () => {
-    recorder?.stop()
+    recorder!.stop()
     setState(RecordState.FINISHED)
   }
 
   const makeLink: MouseEventHandler<HTMLAnchorElement> = (event) => {
     // todo, pick mime type from blobs
+    // debugger;
     const blob = new Blob(data.map(e => e.data), { type: "audio/webm;codecs=opus" })
 
     const url = URL.createObjectURL(blob);
@@ -208,8 +281,6 @@ const RecordStream: FC<{ stream?: MediaStream }> = ({ stream }) => {
     }, 0)
 
   }
-
-  if (!stream) return null
 
   return <>
     {state
