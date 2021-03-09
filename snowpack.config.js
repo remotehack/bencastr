@@ -12,7 +12,10 @@ module.exports = {
     "@snowpack/plugin-react-refresh",
     '@snowpack/plugin-webpack'
   ],
-  packageOptions: {},
+  packageOptions: {
+    "source": "remote",
+    "types": true,
+  },
   devOptions: {},
   buildOptions: {
     baseUrl: './',
