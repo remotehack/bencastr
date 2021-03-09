@@ -4,7 +4,7 @@
   "description": "The remote hack studio",
   "scripts": {
     "start": "snowpack dev",
-    "build": "snowpack build",
+    "build": "snowpack prepare; snowpack build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
