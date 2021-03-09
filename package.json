@@ -4,7 +4,7 @@
   "description": "The remote hack studio",
   "scripts": {
     "start": "snowpack dev",
-    "build": "snowpack build --public-url /bencastr/",
+    "build": "snowpack build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
