@@ -4,20 +4,20 @@
 /** @type {import("snowpack").SnowpackUserConfig } */
 module.exports = {
   mount: {
-    public: { url: '/' },
-    src: { url: '/_dist' },
+    public: { url: "/" },
+    src: { url: "/_dist" },
   },
   plugins: [
-    '@snowpack/plugin-typescript',
+    "@snowpack/plugin-typescript",
     "@snowpack/plugin-react-refresh",
-    '@snowpack/plugin-webpack'
+    "@snowpack/plugin-webpack",
   ],
   packageOptions: {
-    "source": "remote",
-    "types": true,
+    source: "remote",
+    types: true,
   },
   devOptions: {},
   buildOptions: {
-    baseUrl: './',
+    baseUrl: "./",
   },
 };
